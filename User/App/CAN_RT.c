@@ -44,7 +44,10 @@ static void CAN_Start(CAN_HandleTypeDef *hcan)
 
     HAL_CAN_ConfigFilter(hcan, &filter);
     HAL_CAN_Start(hcan);
-    HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY); //使能CAN外设中断通知
+    //接收/发送完成+错误类通知
+    HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY |
+                                       CAN_IT_ERROR | CAN_IT_ERROR_WARNING | CAN_IT_ERROR_PASSIVE |
+                                       CAN_IT_BUSOFF | CAN_IT_LAST_ERROR_CODE); //使能CAN外设中断通知
 }
 
 /**
@@ -181,3 +184,19 @@ static void CAN_TX_Complete(CAN_HandleTypeDef *hcan)
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
+
+/**
+  *@brief CAN错误回调
+  *@param hcan CAN句柄
+  *@retval NULL
+  */
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+    if (hcan->Instance == CAN1)
+        Transfer_TxComplete(mCAN1);
+    else if (hcan->Instance == CAN2)
+        Transfer_TxComplete(mCAN2);
+    else
+        return;
+}
+
