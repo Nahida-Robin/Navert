@@ -155,6 +155,8 @@ void Transfer_Poll(void)
 {
     SPI_RT_Poll();//SPI配置为全双工 用来检测总线空闲以确定不定长数据是否发完并放到环形缓冲区
 
+    CAN_RT_Poll();//处理总线关闭留下的复位请求 复位完这一轮就能接着转发
+
     //尝试转发hold的数据
     Transfer_TryHeld();
 

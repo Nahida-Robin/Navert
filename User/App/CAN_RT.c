@@ -13,6 +13,10 @@
 static uint8_t CAN1_RxBuf[8];
 static uint8_t CAN2_RxBuf[8];
 
+//总线关闭标志
+static volatile uint8_t can1_busoff;
+static volatile uint8_t can2_busoff;
+
 /**
   *@brief CAN使能
   *@param hcan CAN句柄
@@ -59,6 +63,20 @@ void CAN_RT_Init(void)
 {
     CAN_Start(&hcan1);
     CAN_Start(&hcan2);
+}
+
+/**
+  *@brief CAN总线关闭后的复位
+  *@param hcan CAN句柄
+  *@retval NULL
+  */
+static void CAN_Recover(CAN_HandleTypeDef *hcan)
+{
+    HAL_CAN_Stop(hcan);
+    HAL_CAN_Init(hcan);
+    HAL_CAN_AbortTxRequest(hcan, CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2);
+
+    CAN_Start(hcan);
 }
 
 /**
@@ -181,6 +199,26 @@ static void CAN_TX_Complete(CAN_HandleTypeDef *hcan)
         Transfer_TxComplete(mCAN2);
 }
 
+/**
+  *@brief CAN轮询 处理中断里攒下的总线关闭复位请求
+  *@param NULL
+  *@retval NULL
+  */
+void CAN_RT_Poll(void)
+{
+    if (can1_busoff)
+    {
+        can1_busoff = 0;
+        CAN_Recover(&hcan1);
+    }
+    
+    if (can2_busoff)
+    {
+        can2_busoff = 0;
+        CAN_Recover(&hcan2);
+    }
+}
+
 void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan) { CAN_TX_Complete(hcan); }
@@ -198,5 +236,14 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
         Transfer_TxComplete(mCAN2);
     else
         return;
+
+    //总线关闭标志
+    if ((hcan->Instance->ESR & CAN_ESR_BOFF) != 0U)
+    {
+        if (hcan->Instance == CAN1)
+            can1_busoff = 1;
+        else
+            can2_busoff = 1;
+    }
 }
 
