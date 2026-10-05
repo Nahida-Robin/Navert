@@ -1,0 +1,6 @@
+st7789\lv_draw_vglite_rect.o: ..\LVGL\src\draw\nxp\vglite\lv_draw_vglite_rect.c
+st7789\lv_draw_vglite_rect.o: ..\LVGL\src\draw\nxp\vglite\lv_draw_vglite_rect.h
+st7789\lv_draw_vglite_rect.o: ..\LVGL\src\draw\nxp\vglite\../../../lv_conf_internal.h
+st7789\lv_draw_vglite_rect.o: F:\Keil5\ARM\ARMCC\Bin\..\include\stdint.h
+st7789\lv_draw_vglite_rect.o: ..\LVGL\src\draw\nxp\vglite\../../../lv_conf_kconfig.h
+st7789\lv_draw_vglite_rect.o: ../LVGL/examples/porting/../../lv_conf.h

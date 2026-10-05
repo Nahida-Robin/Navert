@@ -16,7 +16,7 @@
 
 #define TRANSFER_SRC_NUM 8
 
-// 转发路径结构体
+//转发路径结构体
 typedef struct
 {
     Src_t des;
@@ -26,29 +26,34 @@ typedef struct
     uint16_t iic_addr;
 } TransferRoute_t;
 
-// 为每个协议初始化一个缓冲区
+//为每个协议初始化一个缓冲区
 RingBuf_t USART_RingBuf;
 RingBuf_t CAN_RingBuf;
 RingBuf_t IIC_RingBuf;
 RingBuf_t SPI_RingBuf;
 
-// 发送缓冲端口 DMA从这个数组搬运数据 有数据时置busy忙 再来数据就放hold
+//发送缓冲端口 DMA从这个数组搬运数据 有数据时置busy忙 再来数据就放hold
 static Msg_t Transfer_Buf[TRANSFER_SRC_NUM];
 
-// 转发忙 转发时置1 结束回调里清零
+//转发忙 转发时置1 结束回调里清零
 static volatile uint8_t tx_busy[TRANSFER_SRC_NUM] = {0};
 
-// 路径表 决定某个端口来的数据发送到哪
+//路径表 决定某个端口来的数据发送到哪
 static TransferRoute_t Transfer_Route[TRANSFER_SRC_NUM];
 
-// hold位，如果目的端口忙，就暂存等不忙，与缓冲区相互配合，读缓冲区前不知道目的端口是哪，读出来后不能放回缓冲区，所以用hold位暂存
+//每口置忙的时刻 只给tx_busy超时用
+static uint32_t tx_start[TRANSFER_SRC_NUM] = {0};
+
+#define TX_BUSY_TIMEOUT_MS 500
+
+//hold位，如果目的端口忙，就暂存等不忙，与缓冲区相互配合，读缓冲区前不知道目的端口是哪，读出来后不能放回缓冲区，所以用hold位暂存
 #define HOLD_COUNT 4
 #define HOLD_USART 0
 #define HOLD_CAN 1
 #define HOLD_IIC 2
 #define HOLD_SPI 3
 
-// hold结构体 为每种协议预设hold位
+//hold结构体 为每种协议预设hold位
 static struct
 {
     Msg_t msg;
@@ -62,7 +67,7 @@ static struct
   */
 void Transfer_Init(void)
 {
-    // 初始各通信协议缓冲区
+    //初始各通信协议缓冲区
     RingBuf_Init(&USART_RingBuf);
     RingBuf_Init(&CAN_RingBuf);
     RingBuf_Init(&IIC_RingBuf);
@@ -94,6 +99,55 @@ void Transfer_TxComplete(Src_t des)
 }
 
 /**
+  *@brief 超时让底层放弃当前这帧发送
+  *@param des 目的端口
+  *@retval NULL
+  */
+static void Transfer_AbortTx(Src_t des)
+{
+    switch (des)
+    {
+    case mUSART1:
+    case mUSART2:
+        USART_RT_AbortTx(des);
+        break;
+
+    case mCAN1:
+    case mCAN2:
+        CAN_RT_AbortTx(des);
+        break;
+
+    case mSPI2:
+    case mSPI3:
+        SPI_RT_AbortTx(des);
+        break;
+ 
+    default:
+        break;
+    }
+}
+
+/**
+  *@brief tx_busy超时
+  *@param NULL
+  *@retval NULL
+  */
+static void Transfer_CheckTimeout(void)
+{
+    for (int i = 0; i < TRANSFER_SRC_NUM; i++)
+    {
+        if (!tx_busy[i])
+            continue;
+
+        if ((uint32_t)(HAL_GetTick() - tx_start[i]) < TX_BUSY_TIMEOUT_MS)
+            continue;
+
+        Transfer_AbortTx((Src_t)i);
+        tx_busy[i] = 0;
+    }
+}
+
+/**
   *@brief 负责从hold位数据放到发送缓冲区发送 遍历四个hold位，如果有数据且对应端口不忙，就发送并清busy
   *@param NULL
   *@retval NULL
@@ -122,7 +176,7 @@ static void Transfer_TryHeld(void)
   */
 static void Transfer_Drain(RingBuf_t *rb, int hold_idx)
 {
-    if (hold_msgs[hold_idx].valid) // hold有数据
+    if (hold_msgs[hold_idx].valid) //hold有数据
         return;
 
     Msg_t msg;
@@ -156,6 +210,9 @@ void Transfer_Poll(void)
     SPI_RT_Poll();//SPI配置为全双工 用来检测总线空闲以确定不定长数据是否发完并放到环形缓冲区
 
     CAN_RT_Poll();//处理总线关闭留下的复位请求 复位完这一轮就能接着转发
+
+    //回收等不到完成回调的busy 放在TryHeld前面 这一轮就能把hold里的数据补发出去
+    Transfer_CheckTimeout();
 
     //尝试转发hold的数据
     Transfer_TryHeld();
@@ -194,6 +251,7 @@ void Transfer_Forward(Msg_t *msg)
     memcpy(buf->data, msg->data, msg->len);
 
     tx_busy[des] = 1;
+    tx_start[des] = HAL_GetTick();//记下置忙时刻 超时兜底要用
 
     HAL_StatusTypeDef hal_ret = HAL_OK;
 

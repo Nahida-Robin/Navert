@@ -279,6 +279,33 @@ HAL_StatusTypeDef SPI_RT_Send(Src_t des, uint8_t *data, uint16_t len)
 }
 
 /**
+  *@brief 停掉正在进行的发送 超时用
+  *@param des SPI目标端口
+  *@retval NULL
+  */
+void SPI_RT_AbortTx(Src_t des)
+{
+    SPI_HandleTypeDef *hspi;
+    uint8_t *rx_buf;
+
+    switch (des)
+    {
+        case mSPI2: hspi = &hspi2; rx_buf = SPI2_RxBuf; break;
+        case mSPI3: hspi = &hspi3; rx_buf = SPI3_RxBuf; break;
+        default: return;
+    }
+
+    if (hspi->State != HAL_SPI_STATE_BUSY_TX)
+        return;//正在从机收帧
+ 
+    SPI_Full_Reset(hspi);
+
+    //从机撤完发送得回到收 主机模式不用
+    if (hspi->Init.Mode == SPI_MODE_SLAVE)
+        HAL_SPI_Receive_DMA(hspi, rx_buf, SPI_RX_BUF_SIZE);
+}
+
+/**
   *@brief 接收完成回调 主机TX完成回调已在LCD.c中实现
   *@param hspi SPI句柄
   *@retval NULL

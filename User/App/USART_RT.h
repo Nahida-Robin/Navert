@@ -23,5 +23,6 @@ typedef struct {
 void USART_RT_Init(void);
 void USART_RT_Config(Src_t des, USART_Config_t *cfg);
 HAL_StatusTypeDef USART_RT_Send(Src_t des, uint8_t *data, uint16_t len);
+void USART_RT_AbortTx(Src_t des); 
 
 #endif

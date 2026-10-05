@@ -23,5 +23,6 @@ void CAN_RT_Init(void);
 void CAN_RT_Config(Src_t des, CAN_Config_t *cfg);
 void CAN_RT_Poll(void);
 HAL_StatusTypeDef CAN_RT_Send(Src_t des, uint32_t id, uint32_t ide, uint8_t *data, uint16_t len);
+void CAN_RT_AbortTx(Src_t des);
 
 #endif

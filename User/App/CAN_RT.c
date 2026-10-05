@@ -151,6 +151,25 @@ HAL_StatusTypeDef CAN_RT_Send(Src_t des, uint32_t id, uint32_t ide, uint8_t *dat
 }
 
 /**
+  *@brief 撤掉待发的邮箱 超时用
+  *@param des CAN目标端口
+  *@retval NULL
+  */
+void CAN_RT_AbortTx(Src_t des)
+{
+    CAN_HandleTypeDef *hcan;
+
+    switch (des)
+    {
+        case mCAN1: hcan = &hcan1; break;
+        case mCAN2: hcan = &hcan2; break;
+        default: return;
+    }
+
+    HAL_CAN_AbortTxRequest(hcan, CAN_TX_MAILBOX0 | CAN_TX_MAILBOX1 | CAN_TX_MAILBOX2);
+}
+
+/**
   *@brief CAN接收FIFO0消息待处理回调函数
   *@param hcan CAN句柄
   *@retval NULL

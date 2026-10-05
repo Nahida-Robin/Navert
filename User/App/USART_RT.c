@@ -121,6 +121,19 @@ HAL_StatusTypeDef USART_RT_Send(Src_t des, uint8_t *data, uint16_t len)
 }
 
 /**
+  *@brief 停掉正在进行的发送 超时用
+  *@param des 目标端口
+  *@retval NULL
+  */
+void USART_RT_AbortTx(Src_t des)
+{ 
+    if (des == mUSART1)
+        HAL_UART_AbortTransmit(&huart1);
+    else if (des == mUSART2)
+        HAL_UART_AbortTransmit(&huart2);
+}
+
+/**
   *@brief 空闲回调
   *@param huart UART句柄
   *@param Size 接收数据长度

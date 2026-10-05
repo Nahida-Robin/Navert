@@ -26,5 +26,6 @@ void SPI_RT_EnterSlaveMode(Src_t des);
 void SPI_RT_EnterMasterMode(Src_t des);
 void SPI_RT_Poll(void);
 HAL_StatusTypeDef SPI_RT_Send(Src_t des, uint8_t *data, uint16_t len);
+void SPI_RT_AbortTx(Src_t des); 
 
 #endif

@@ -93,6 +93,20 @@ SPI通信的本质是数据交换，但是本项目把SPI模式抽象成单向�
 - **主机**：Master模式，用来作为端口发送消息，产生SCK并发送数据
 - **从机**：Slave模式。用来作为端口接收消息，等待外部SCK并接收数据
 
+### 9. 超时保护机制
+
+```c
+void Transfer_Poll(void)
+{
+    SPI_RT_Poll();
+	···
+    Transfer_CheckTimeout(); //置忙超过500ms就强清
+    Transfer_Drain(&USART_RingBuf, HOLD_USART);
+	···
+}
+```
+发送时每个端口记下tx_start，超过500ms未释放busy位视为超时，先停掉DMA帧，再放开busy位
+
 ## 🍃相关文档
 
 | 文档 | 内容 | 推荐阅读 |
@@ -123,7 +137,7 @@ SPI通信的本质是数据交换，但是本项目把SPI模式抽象成单向�
 ### 3. 验证
 
 1. 上电后屏幕出现Navert主界面，八个按钮对应八个端口，下面Config配置接收配置，CAN1配置为环回模式
-2. 串口助手接USART1，进USART1页面→Forward to:选 CAN1→Start Forward
+2. 串口助手接USART1，进USART1页面→Forward to:选CAN1→Start Forward
 3. 串口助手发0x01→屏幕上出现From: USART1的数据，收到一帧0x01的数据
 4. 返回进入CAN1界面，屏幕上出现From：CAN1的数据，收到一帧0x01的数据
 
@@ -139,7 +153,7 @@ SPI通信的本质是数据交换，但是本项目把SPI模式抽象成单向�
 
 ### 软件优化
 
-1. **错误回调**：补齐 CAN/SPI 错误回调+tx_busy超时自恢复
+1. **错误回调**：补齐CAN/SPI错误回调+tx_busy超时自恢复
 2. **可观测性** ：丢帧/截断计数显示
 3. **配置持久化**：参数存Flash，开机自动恢复
 
