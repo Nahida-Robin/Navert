@@ -230,8 +230,7 @@ static void IIC_Process_Error(I2C_HandleTypeDef *hi2c)
     uint16_t actual = IIC_RX_BUF_SIZE - hi2c->XferCount;
     if (hi2c->XferCount == 0)
     {
-        uint16_t pbuf_off = (uint16_t)(hi2c->pBuffPtr - rx_buf);
-        if (pbuf_off == 0)
+        if (hi2c->pBuffPtr == rx_buf)
         {
             IIC_RT_EnterSlaveMode(src);
             return;
@@ -265,44 +264,3 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
     IIC_Process_Error(hi2c);
 }
 
-/**
-  *@brief 接收满回调
-  *@param hi2c IIC句柄
-  *@retval NULL 
-  */
-void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
-{
-    uint8_t *rx_buf;
-    Src_t src;
-
-    if (hi2c->Instance == I2C1)
-    {
-        src    = mIIC1;
-        rx_buf = IIC1_RxBuf;
-    }
-    else if (hi2c->Instance == I2C2)
-    {
-        src    = mIIC2;
-        rx_buf = IIC2_RxBuf;
-    }
-    else
-    {
-        return;
-    }
-
-    uint16_t actual = (uint16_t)(hi2c->pBuffPtr - rx_buf);
-    if (actual > IIC_RX_BUF_SIZE)
-        actual = IIC_RX_BUF_SIZE;
-
-    if (actual > 0)
-    {
-        Msg_t msg;
-        memset(&msg, 0, sizeof(msg));
-        msg.src  = src;
-        msg.len  = actual;
-        memcpy(msg.data, rx_buf, actual);
-        RingBuf_Write(&IIC_RingBuf, &msg);
-    }
-
-    IIC_RT_EnterSlaveMode(src);
-}
